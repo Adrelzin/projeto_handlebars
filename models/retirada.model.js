@@ -11,7 +11,7 @@ const Retirada = db.define('Retirada', {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-            model: 'Alunos',
+            model: 'alunos',
             key: 'id'
         },
         validate: {
@@ -41,7 +41,15 @@ const Retirada = db.define('Retirada', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'Materials',
+            model: 'materiais',
+            key: 'id'
+        }
+    },
+    servidorId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'servidores',
             key: 'id'
         }
     },
@@ -57,10 +65,6 @@ const Retirada = db.define('Retirada', {
         type: DataTypes.TIME,
         allowNull: false
     },
-    responsavelEntrega: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
     finalidade: {
         type: DataTypes.STRING,
         allowNull: false
@@ -70,7 +74,7 @@ const Retirada = db.define('Retirada', {
         allowNull: true
     }
 }, {
-    tableName: 'Retiradas',
+    tableName: 'retiradas',
     timestamps: true
 });
 
