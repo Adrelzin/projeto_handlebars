@@ -14,12 +14,12 @@ const Servidor = require('./models/servidor.model');
 const Retirada = require('./models/retirada.model');
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.engine('handlebars', exphbs.engine({ 
+app.engine('handlebars', exphbs.engine({
     defaultLayout: false,
     helpers: {
-        eq: function(a, b) {
+        eq: function (a, b) {
             return a === b;
         }
     }
@@ -27,7 +27,7 @@ app.engine('handlebars', exphbs.engine({
 
 app.set('view engine', 'handlebars');
 app.set('views', './views');
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Relacionamentos
 Aluno.belongsTo(Turma, { foreignKey: 'turmaId', as: 'Turma', onDelete: 'SET NULL' });
@@ -36,51 +36,53 @@ Turma.hasMany(Aluno, { foreignKey: 'turmaId', as: 'Alunos' });
 Retirada.belongsTo(Aluno, { foreignKey: 'alunoId', as: 'Aluno', onDelete: 'CASCADE' });
 Retirada.belongsTo(Material, { foreignKey: 'materialId', as: 'Material', onDelete: 'CASCADE' });
 Retirada.belongsTo(Professor, { foreignKey: 'professorId', targetKey: 'professorId', as: 'Professor', onDelete: 'CASCADE' });
+Retirada.belongsTo(Servidor, { foreignKey: 'servidorId', as: 'Servidor' });
 
 Aluno.hasMany(Retirada, { foreignKey: 'alunoId', as: 'Retiradas' });
 Material.hasMany(Retirada, { foreignKey: 'materialId', as: 'Retiradas' });
 Professor.hasMany(Retirada, { foreignKey: 'professorId', sourceKey: 'professorId', as: 'Retiradas' });
 
 // Sincronizar e popular banco
-db.sync({force: true}).then(async () => {
+db.sync({ force: true }).then(async () => {
     console.log('Banco sincronizado');
     console.log('Inserindo dados iniciais...');
-    
+
     await Material.bulkCreate([
-        { nome: "Caderno 10 matérias", quantidade: 50},
-        { nome: "Lápis HB", quantidade: 200},
-        { nome: "Borracha branca", quantidade: 100},
+        { nome: "Caderno 10 matérias", quantidade: 50 },
+        { nome: "Lápis HB", quantidade: 200 },
+        { nome: "Borracha branca", quantidade: 100 },
     ]);
-    
+
     await Professor.bulkCreate([
         { nome: "Eric Sales", disciplina: "Dev. Web", email: "Eric@ifpe.com" },
         { nome: "Rogério Amaral", disciplina: "Matemática", email: "Rogerio@ifpe.com" },
         { nome: "Havana Alves", disciplina: "Programação 1", email: "Havana@ifpe.com" },
     ]);
-    
+
     await Turma.bulkCreate([
         { nome: "1º Ano A", turno: "Manhã", capacidade: 30 },
         { nome: "1º Ano B", turno: "Manhã", capacidade: 28 },
         { nome: "2º Ano A", turno: "Manhã", capacidade: 32 },
     ]);
-    
+
     await Aluno.bulkCreate([
         { nome: "Pedro Oliveira", matricula: "2024001", dataNascimento: "2010-05-15", turmaId: 1 },
         { nome: "Julia Santos", matricula: "2024002", dataNascimento: "2010-08-22", turmaId: 1 },
         { nome: "Lucas Silva", matricula: "2024003", dataNascimento: "2011-03-10", turmaId: 2 },
     ]);
-    
+
     await Servidor.bulkCreate([
         { nome: "Carlos Mendes", cargo: "Secretário", setor: "Secretaria", matricula: "SRV001", telefone: "(81) 98765-4321", email: "carlos@escola.com" },
         { nome: "Fernanda Lima", cargo: "Coordenadora", setor: "Coordenação", matricula: "SRV002", telefone: "(81) 98765-4322", email: "fernanda@escola.com" },
     ]);
-    
+
     await Retirada.bulkCreate([
-        { alunoId: 1, materialId: 1, quantidade: 2, dataRetirada: "2024-11-01", horaRetirada: "08:30:00", responsavelEntrega: "Carlos Mendes", finalidade: "Aula de Matemática" },
-        { alunoId: 2, materialId: 2, quantidade: 5, dataRetirada: "2024-11-02", horaRetirada: "09:15:00", responsavelEntrega: "Fernanda Lima", finalidade: "Projeto de Arte" },
-        { professorId: 1, materialId: 3, quantidade: 3, dataRetirada: "2024-11-03", horaRetirada: "10:00:00", responsavelEntrega: "Carlos Mendes", finalidade: "Aula de Matemática" },
+        { alunoId: 1, materialId: 1, quantidade: 2, dataRetirada: "2024-11-01", horaRetirada: "08:30:00", servidorId: 1, finalidade: "Aula de Matemática" },
+        { alunoId: 2, materialId: 2, quantidade: 5, dataRetirada: "2024-11-02", horaRetirada: "09:15:00", servidorId: 2, finalidade: "Projeto de Arte" },
+        { professorId: 1, materialId: 3, quantidade: 3, dataRetirada: "2024-11-03", horaRetirada: "10:00:00", servidorId: 1, finalidade: "Aula de Matemática" },
     ]);
-    
+
+
     console.log('Dados iniciais inseridos!');
 });
 
@@ -137,9 +139,9 @@ app.post('/materiais/:id/editar', async (req, res) => {
 app.post('/materiais/excluir/:id', async (req, res) => {
     try {
         await Retirada.destroy({ where: { materialId: req.params.id } });
-        
+
         await Material.destroy({ where: { id: req.params.id } });
-        
+
         res.redirect('/materiais');
     } catch (error) {
         console.error('Erro ao excluir:', error);
@@ -173,6 +175,7 @@ app.post('/professores', async (req, res) => {
     await Professor.create(req.body);
     res.redirect('/professores');
 });
+
 app.post('/professores/:id/editar', async (req, res) => {
     const professor = await Professor.findByPk(req.params.id);
     professor.nome = req.body.nome;
@@ -181,10 +184,18 @@ app.post('/professores/:id/editar', async (req, res) => {
     await professor.save();
     res.redirect('/professores');
 });
+
 app.post('/professores/excluir/:id', async (req, res) => {
-    await Professor.destroy({ where: { id: req.params.id } });
-    res.redirect('/professores');
+    try {
+        await Retirada.destroy({ where: { professorId: req.params.id } });
+        await Professor.destroy({ where: { professorId: req.params.id } }); 
+        res.redirect('/professores');
+    } catch (error) {
+        console.error('Erro ao excluir professor:', error);
+        res.status(500).send('Erro ao excluir professor');
+    }
 });
+
 
 // TURMAS
 app.get('/turmas', async (req, res) => {
@@ -280,9 +291,7 @@ app.post('/alunos/:id/editar', async (req, res) => {
 // EXCLUIR
 app.post('/alunos/excluir/:id', async (req, res) => {
     try {
-        // Deletar retiradas relacionadas primeiro
         await Retirada.destroy({ where: { alunoId: req.params.id } });
-        // Deletar o aluno
         await Aluno.destroy({ where: { id: req.params.id } });
         res.redirect('/alunos');
     } catch (error) {
@@ -296,9 +305,11 @@ app.get('/servidores', async (req, res) => {
     const servidores = await Servidor.findAll();
     res.render('servidores', { lista: true, servidores: servidores.map(s => s.toJSON()) });
 });
+
 app.get('/servidores/novo', (req, res) => {
     res.render('servidores', { form: true });
 });
+
 app.get('/servidores/:id/editar', async (req, res) => {
     const servidor = await Servidor.findByPk(req.params.id);
     if (!servidor) {
@@ -306,6 +317,7 @@ app.get('/servidores/:id/editar', async (req, res) => {
     }
     res.render('servidores', { form: true, servidor: servidor.toJSON() });
 });
+
 app.get('/servidores/ver/:id', async (req, res) => {
     const servidor = await Servidor.findByPk(req.params.id);
     if (!servidor) {
@@ -313,14 +325,17 @@ app.get('/servidores/ver/:id', async (req, res) => {
     }
     res.render('servidores', { detalhe: true, servidor: servidor.toJSON() });
 });
+
 app.post('/servidores', async (req, res) => {
     await Servidor.create(req.body);
     res.redirect('/servidores');
 });
+
 app.post('/servidores/:id/editar', async (req, res) => {
     await Servidor.update(req.body, { where: { id: req.params.id } });
     res.redirect('/servidores');
 });
+
 app.post('/servidores/excluir/:id', async (req, res) => {
     await Servidor.destroy({ where: { id: req.params.id } });
     res.redirect('/servidores');
@@ -328,77 +343,53 @@ app.post('/servidores/excluir/:id', async (req, res) => {
 
 // RETIRADAS
 
+// LISTAR RETIRADAS
 app.get('/retiradas', async (req, res) => {
     try {
         const { busca, tipo } = req.query;
         const { Op } = require('sequelize');
-        
+
+        let where = {};
         let include = [
             { model: Aluno, as: 'Aluno', required: false },
             { model: Professor, as: 'Professor', required: false },
-            { model: Material, as: 'Material', required: true }
+            { model: Material, as: 'Material', required: true },
+            { model: Servidor, as: 'Servidor', required: true }
         ];
-        
-        if (busca && busca.trim() !== '') {
-            if (tipo === 'aluno') {
-                include[0] = { 
-                    model: Aluno, 
-                    as: 'Aluno', 
-                    required: true,
-                    where: {
-                        nome: { [Op.like]: `%${busca}%` }
-                    }
-                };
-            } else if (tipo === 'professor') {
-                include[1] = { 
-                    model: Professor, 
-                    as: 'Professor', 
-                    required: true,
-                    where: {
-                        nome: { [Op.like]: `%${busca}%` }
-                    }
-                };
-            } else {
-                include = [
-                    { 
-                        model: Aluno, 
-                        as: 'Aluno', 
-                        required: false,
-                        where: {
-                            nome: { [Op.like]: `%${busca}%` }
-                        }
-                    },
-                    { 
-                        model: Professor, 
-                        as: 'Professor', 
-                        required: false,
-                        where: {
-                            nome: { [Op.like]: `%${busca}%` }
-                        }
-                    },
-                    { model: Material, as: 'Material', required: true }
-                ];
+
+        if (tipo === 'aluno') {
+            where.alunoId = { [Op.not]: null };
+            if (busca && busca.trim() !== '') {
+                include[0].where = { nome: { [Op.like]: `%${busca}%` } };
+                include[0].required = true;
+            }
+        } else if (tipo === 'professor') {
+            where.professorId = { [Op.not]: null };
+            if (busca && busca.trim() !== '') {
+                include[1].where = { nome: { [Op.like]: `%${busca}%` } };
+                include[1].required = true;
             }
         }
-        
+
         const retiradas = await Retirada.findAll({
-            include: include,
+            where,
+            include,
             order: [['dataRetirada', 'DESC'], ['horaRetirada', 'DESC']]
         });
-        
+
         let resultadosFiltrados = retiradas;
-        
+
         if (busca && busca.trim() !== '' && !tipo) {
+            const buscaLower = busca.toLowerCase();
             resultadosFiltrados = retiradas.filter(r => {
                 const nomeAluno = r.Aluno ? r.Aluno.nome.toLowerCase() : '';
                 const nomeProfessor = r.Professor ? r.Professor.nome.toLowerCase() : '';
-                const buscaLower = busca.toLowerCase();
                 return nomeAluno.includes(buscaLower) || nomeProfessor.includes(buscaLower);
             });
         }
-        
-        res.render('retiradas', { 
-            lista: true, 
+
+        res.render('retiradas', {
+            lista: true,
             retiradas: resultadosFiltrados.map(r => r.toJSON()),
             busca: busca || '',
             tipo: tipo || ''
@@ -409,16 +400,19 @@ app.get('/retiradas', async (req, res) => {
     }
 });
 
+
 //Nova retirada
 app.get('/retiradas/nova', async (req, res) => {
     const alunos = await Aluno.findAll();
     const professores = await Professor.findAll();
     const materiais = await Material.findAll();
+    const servidores = await Servidor.findAll(); 
     res.render('retiradas', { 
         form: true, 
         alunos: alunos.map(a => a.toJSON()), 
         professores: professores.map(p => p.toJSON()),
-        materiais: materiais.map(m => m.toJSON()) 
+        materiais: materiais.map(m => m.toJSON()),
+        servidores: servidores.map(s => s.toJSON()) 
     });
 });
 
@@ -428,15 +422,19 @@ app.get('/retiradas/:id/editar', async (req, res) => {
     const alunos = await Aluno.findAll();
     const professores = await Professor.findAll();
     const materiais = await Material.findAll();
+    const servidores = await Servidor.findAll();
+
     if (!retirada) {
         return res.status(404).send('Retirada não encontrada');
     }
+
     res.render('retiradas', { 
         form: true, 
         retirada: retirada.toJSON(), 
         alunos: alunos.map(a => a.toJSON()),
         professores: professores.map(p => p.toJSON()),
-        materiais: materiais.map(m => m.toJSON()) 
+        materiais: materiais.map(m => m.toJSON()),
+        servidores: servidores.map(s => s.toJSON())
     });
 });
 
@@ -446,18 +444,22 @@ app.get('/retiradas/ver/:id', async (req, res) => {
         include: [
             { model: Aluno, as: 'Aluno' },
             { model: Professor, as: 'Professor' },
-            { model: Material, as: 'Material' }
+            { model: Material, as: 'Material' },
+            { model: Servidor, as: 'Servidor' }  
         ]
     });
+
     if (!retirada) {
         return res.status(404).send('Retirada não encontrada');
     }
+
     res.render('retiradas', { detalhe: true, retirada: retirada.toJSON() });
 });
 
+
 //Criar retiradas
 app.post('/retiradas', async (req, res) => {
-    try{
+    try {
         const { materialId, quantidade, tipoRetirada } = req.body;
 
         const material = await Material.findByPk(materialId);
@@ -466,7 +468,7 @@ app.post('/retiradas', async (req, res) => {
             return res.status(404).send('Material não encontrado');
         }
 
-        if (material.quantidade < parseInt(quantidade)){
+        if (material.quantidade < parseInt(quantidade)) {
             return res.status(400).send(`Estoque insuficiente! Disponível: ${material.quantidade}, Solicitado: ${quantidade}`);
         }
 
@@ -485,7 +487,7 @@ app.post('/retiradas', async (req, res) => {
         await material.save();
 
         res.redirect('/retiradas');
-    }catch(error){
+    } catch (error) {
         console.error('Erro ao criar retirada:', error);
         res.status(500).send('Erro ao criar retirada: ' + error.message);
     }
@@ -494,33 +496,33 @@ app.post('/retiradas', async (req, res) => {
 app.post('/retiradas/:id/editar', async (req, res) => {
     try {
         const retirada = await Retirada.findByPk(req.params.id);
-        
+
         if (!retirada) {
             return res.status(404).send('Retirada não encontrada');
         }
-        
+
         const { materialId, quantidade, tipoRetirada } = req.body;
         const quantidadeAnterior = retirada.quantidade;
         const materialAnteriorId = retirada.materialId;
-        
+
         if (materialAnteriorId != materialId || quantidadeAnterior != quantidade) {
-            
+
             const materialAnterior = await Material.findByPk(materialAnteriorId);
             materialAnterior.quantidade += quantidadeAnterior;
             await materialAnterior.save();
-            
+
             const materialNovo = await Material.findByPk(materialId);
-            
+
             if (materialNovo.quantidade < parseInt(quantidade)) {
                 materialAnterior.quantidade -= quantidadeAnterior;
                 await materialAnterior.save();
                 return res.status(400).send(`Estoque insuficiente! Disponível: ${materialNovo.quantidade}, Solicitado: ${quantidade}`);
             }
-            
+
             materialNovo.quantidade -= parseInt(quantidade);
             await materialNovo.save();
         }
-        
+
         // Limpar os IDs sem uso
         const dadosAtualizacao = { ...req.body };
         if (tipoRetirada === 'aluno') {
@@ -529,10 +531,10 @@ app.post('/retiradas/:id/editar', async (req, res) => {
             dadosAtualizacao.alunoId = null;
         }
         delete dadosAtualizacao.tipoRetirada;
-        
+
         await Retirada.update(dadosAtualizacao, { where: { id: req.params.id } });
         res.redirect('/retiradas');
-        
+
     } catch (error) {
         console.error('Erro ao editar retirada:', error);
         res.status(500).send('Erro ao editar retirada: ' + error.message);
@@ -543,17 +545,17 @@ app.post('/retiradas/:id/editar', async (req, res) => {
 app.post('/retiradas/excluir/:id', async (req, res) => {
     try {
         const retirada = await Retirada.findByPk(req.params.id);
-        
+
         if (!retirada) {
             return res.status(404).send('Retirada não encontrada');
         }
-        
+
         const material = await Material.findByPk(retirada.materialId);
         material.quantidade += retirada.quantidade;
         await material.save();
-        
+
         await Retirada.destroy({ where: { id: req.params.id } });
-        
+
         res.redirect('/retiradas');
     } catch (error) {
         console.error('Erro ao excluir retirada:', error);
@@ -562,5 +564,5 @@ app.post('/retiradas/excluir/:id', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`);
+    console.log(`Servidor rodando em http://localhost:${port}`);
 });
