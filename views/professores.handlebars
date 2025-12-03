@@ -220,11 +220,11 @@
             {{#each professores}}
             <li>
                 <div class="info">
-                    <a href="/professores/ver/{{id}}">{{nome}}</a> - Disciplina: {{disciplina}}
+                    <a href="/professores/ver/{{professorId}}">{{nome}}</a> - Disciplina: {{disciplina}}
                 </div>
                 <div class="actions">
-                    <a href="/professores/{{id}}/editar">Editar</a>
-                    <form action="/professores/excluir/{{id}}" method="POST" style="margin:0;">
+                    <a href="/professores/{{professorId}}/editar">Editar</a>
+                    <form action="/professores/excluir/{{professorId}}" method="POST" style="margin:0;">
                         <button type="submit" onclick="return confirm('Confirma exclusão?')">Excluir</button>
                     </form>
                 </div>
@@ -236,16 +236,16 @@
         {{/if}}
 
         {{#if form}}
-        <form action="{{#if professor}}/professores/{{professor.id}}/editar{{else}}/professores{{/if}}" method="POST">
+        <form action="{{#if professor}}/professores/{{professor.professorId}}/editar{{else}}/professores{{/if}}" method="POST">
             <label for="nome">Nome do Professor:</label>
-            <input type="text" name="nome" id="nome" value="{{professor.nome}}" placeholder="Ex: Maria Silva" required>
+            <input type="text" name="nome" professorId="nome" value="{{professor.nome}}" placeholder="Ex: Maria Silva" required>
 
             <label for="disciplina">Disciplina:</label>
-            <input type="text" name="disciplina" id="disciplina" value="{{professor.disciplina}}"
+            <input type="text" name="disciplina" professorId="disciplina" value="{{professor.disciplina}}"
                 placeholder="Ex: Matemática" required>
 
             <label for="email">Email:</label>
-            <input type="email" name="email" id="email" value="{{professor.email}}"
+            <input type="email" name="email" professorId="email" value="{{professor.email}}"
                 placeholder="Ex: professor@escola.com" required>
 
             <button type="submit">{{#if professor}}Salvar Alterações{{else}}Cadastrar{{/if}}</button>
@@ -255,7 +255,7 @@
 
         {{#if detalhe}}
         <div class="detail-item">
-            <strong>ID:</strong> {{professor.id}}
+            <strong>ID:</strong> {{professor.professorId}}
         </div>
         <div class="detail-item">
             <strong>Nome:</strong> {{professor.nome}}
