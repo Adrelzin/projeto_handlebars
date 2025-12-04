@@ -17,6 +17,7 @@ const Material = db.define('Material', {
         defaultValue: 0
     }
 }, {
+    tableName: 'materiais', 
     timestamps: true
 });
 
