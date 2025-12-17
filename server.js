@@ -5,13 +5,13 @@ const bodyParser = require('body-parser');
 const db = require('./config/database');
 const port = 3000;
 
-// Importar models
 const Material = require('./models/material.model');
 const Professor = require('./models/professor.model');
 const Turma = require('./models/turma.model');
 const Aluno = require('./models/aluno.model');
 const Servidor = require('./models/servidor.model');
 const Retirada = require('./models/retirada.model');
+const Responsavel = require('./models/responsavel.model');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -24,124 +24,115 @@ app.engine('handlebars', exphbs.engine({
         }
     }
 }));
-
 app.set('view engine', 'handlebars');
 app.set('views', './views');
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Relacionamentos
 Aluno.belongsTo(Turma, { foreignKey: 'turmaId', as: 'Turma', onDelete: 'SET NULL' });
 Turma.hasMany(Aluno, { foreignKey: 'turmaId', as: 'Alunos' });
+
+Aluno.hasOne(Responsavel, { foreignKey: 'alunoId', as: 'Responsavel', onDelete: 'CASCADE' });
+Responsavel.belongsTo(Aluno, { foreignKey: 'alunoId', as: 'Aluno', onDelete: 'CASCADE' });
+
+Material.belongsToMany(Turma, { through: 'MaterialTurma', foreignKey: 'materialId', otherKey: 'turmaId', as: 'Turmas' });
+Turma.belongsToMany(Material, { through: 'MaterialTurma', foreignKey: 'turmaId', otherKey: 'materialId', as: 'Materiais' });
 
 Retirada.belongsTo(Aluno, { foreignKey: 'alunoId', as: 'Aluno', onDelete: 'CASCADE' });
 Retirada.belongsTo(Material, { foreignKey: 'materialId', as: 'Material', onDelete: 'CASCADE' });
 Retirada.belongsTo(Professor, { foreignKey: 'professorId', targetKey: 'professorId', as: 'Professor', onDelete: 'CASCADE' });
 Retirada.belongsTo(Servidor, { foreignKey: 'servidorId', as: 'Servidor' });
-
 Aluno.hasMany(Retirada, { foreignKey: 'alunoId', as: 'Retiradas' });
 Material.hasMany(Retirada, { foreignKey: 'materialId', as: 'Retiradas' });
 Professor.hasMany(Retirada, { foreignKey: 'professorId', sourceKey: 'professorId', as: 'Retiradas' });
 
-// Sincronizar e popular banco
-db.sync({ force: true }).then(async () => {
+db.sync().then(async () => {
     console.log('Banco sincronizado');
-    console.log('Inserindo dados iniciais...');
-
-    await Material.bulkCreate([
-        { nome: "Caderno 10 matérias", quantidade: 50 },
-        { nome: "Lápis HB", quantidade: 200 },
-        { nome: "Borracha branca", quantidade: 100 },
-    ]);
-
-    await Professor.bulkCreate([
-        { nome: "Eric Sales", disciplina: "Dev. Web", email: "Eric@ifpe.com" },
-        { nome: "Rogério Amaral", disciplina: "Matemática", email: "Rogerio@ifpe.com" },
-        { nome: "Havana Alves", disciplina: "Programação 1", email: "Havana@ifpe.com" },
-    ]);
-
-    await Turma.bulkCreate([
-        { nome: "1º Ano A", turno: "Manhã", capacidade: 30 },
-        { nome: "1º Ano B", turno: "Manhã", capacidade: 28 },
-        { nome: "2º Ano A", turno: "Manhã", capacidade: 32 },
-    ]);
-
-    await Aluno.bulkCreate([
-        { nome: "Pedro Oliveira", matricula: "2024001", dataNascimento: "2010-05-15", turmaId: 1 },
-        { nome: "Julia Santos", matricula: "2024002", dataNascimento: "2010-08-22", turmaId: 1 },
-        { nome: "Lucas Silva", matricula: "2024003", dataNascimento: "2011-03-10", turmaId: 2 },
-    ]);
-
-    await Servidor.bulkCreate([
-        { nome: "Carlos Mendes", cargo: "Secretário", setor: "Secretaria", matricula: "SRV001", telefone: "(81) 98765-4321", email: "carlos@escola.com" },
-        { nome: "Fernanda Lima", cargo: "Coordenadora", setor: "Coordenação", matricula: "SRV002", telefone: "(81) 98765-4322", email: "fernanda@escola.com" },
-    ]);
-
-    await Retirada.bulkCreate([
-        { alunoId: 1, materialId: 1, quantidade: 2, dataRetirada: "2024-11-01", horaRetirada: "08:30:00", servidorId: 1, finalidade: "Aula de Matemática" },
-        { alunoId: 2, materialId: 2, quantidade: 5, dataRetirada: "2024-11-02", horaRetirada: "09:15:00", servidorId: 2, finalidade: "Projeto de Arte" },
-        { professorId: 1, materialId: 3, quantidade: 3, dataRetirada: "2024-11-03", horaRetirada: "10:00:00", servidorId: 1, finalidade: "Aula de Matemática" },
-    ]);
-
-
-    console.log('Dados iniciais inseridos!');
+    const materialCount = await Material.count();
+    
+    if (materialCount === 0) {
+        console.log('Banco vazio. Inserindo dados iniciais...');
+        await Material.bulkCreate([
+            { nome: "Caderno 10 materias", quantidade: 50 },
+            { nome: "Lapis HB", quantidade: 200 },
+            { nome: "Borracha branca", quantidade: 100 },
+        ]);
+        await Professor.bulkCreate([
+            { nome: "Eric Sales", disciplina: "Dev. Web", email: "Eric@ifpe.com" },
+            { nome: "Rogerio Amaral", disciplina: "Matematica", email: "Rogerio@ifpe.com" },
+            { nome: "Havana Alves", disciplina: "Programacao 1", email: "Havana@ifpe.com" },
+        ]);
+        await Turma.bulkCreate([
+            { nome: "1 Ano A", turno: "Manha", capacidade: 30 },
+            { nome: "1 Ano B", turno: "Manha", capacidade: 28 },
+            { nome: "2 Ano A", turno: "Manha", capacidade: 32 },
+        ]);
+        await Aluno.bulkCreate([
+            { nome: "Pedro Oliveira", matricula: "2024001", dataNascimento: "2010-05-15", turmaId: 1 },
+            { nome: "Julia Santos", matricula: "2024002", dataNascimento: "2010-08-22", turmaId: 1 },
+            { nome: "Lucas Silva", matricula: "2024003", dataNascimento: "2011-03-10", turmaId: 2 },
+        ]);
+        await Responsavel.bulkCreate([
+            { nome: "Carlos Oliveira", cpf: "123.456.789-00", telefone: "(81) 99999-0001", email: "carlos.oliveira@email.com", parentesco: "Pai", alunoId: 1 },
+            { nome: "Maria Santos", cpf: "123.456.789-01", telefone: "(81) 99999-0002", email: "maria.santos@email.com", parentesco: "Mae", alunoId: 2 },
+            { nome: "Ana Silva", cpf: "123.456.789-02", telefone: "(81) 99999-0003", email: "ana.silva@email.com", parentesco: "Mae", alunoId: 3 },
+        ]);
+        await Servidor.bulkCreate([
+            { nome: "Carlos Mendes", cargo: "Secretario", setor: "Secretaria", matricula: "SRV001", telefone: "(81) 98765-4321", email: "carlos@escola.com" },
+            { nome: "Fernanda Lima", cargo: "Coordenadora", setor: "Coordenacao", matricula: "SRV002", telefone: "(81) 98765-4322", email: "fernanda@escola.com" },
+        ]);
+        await Retirada.bulkCreate([
+            { alunoId: 1, materialId: 1, quantidade: 2, dataRetirada: "2024-11-01", horaRetirada: "08:30:00", servidorId: 1, finalidade: "Aula de Matematica" },
+            { alunoId: 2, materialId: 2, quantidade: 5, dataRetirada: "2024-11-02", horaRetirada: "09:15:00", servidorId: 2, finalidade: "Projeto de Arte" },
+            { professorId: 1, materialId: 3, quantidade: 3, dataRetirada: "2024-11-03", horaRetirada: "10:00:00", servidorId: 1, finalidade: "Aula de Matematica" },
+        ]);
+        const turma1 = await Turma.findByPk(1);
+        const turma2 = await Turma.findByPk(2);
+        const turma3 = await Turma.findByPk(3);
+        const material1 = await Material.findByPk(1);
+        const material2 = await Material.findByPk(2);
+        const material3 = await Material.findByPk(3);
+        await turma1.addMateriais([material1, material2, material3]);
+        await turma2.addMateriais([material1, material2]);
+        await turma3.addMateriais([material2, material3]);
+        console.log('Dados iniciais inseridos com sucesso!');
+    } else {
+        console.log('Banco ja contem dados. Mantendo dados existentes.');
+    }
 });
 
 app.get('/', (req, res) => res.render('home'));
 
-// LISTAR
 app.get('/materiais', async (req, res) => {
     const materiais = await Material.findAll();
     res.render('materiais', { lista: true, materiais: materiais.map(m => m.toJSON()) });
 });
-
-// FORM NOVO 
-app.get('/materiais/novo', (req, res) => {
-    res.render('materiais', { form: true });
-});
-
-// FORM EDITAR 
+app.get('/materiais/novo', (req, res) => res.render('materiais', { form: true }));
 app.get('/materiais/:id/editar', async (req, res) => {
     const material = await Material.findByPk(req.params.id);
-    if (!material) {
-        return res.status(404).send('Material não encontrado');
-    }
+    if (!material) return res.status(404).send('Material nao encontrado');
     res.render('materiais', { form: true, material: material.toJSON() });
 });
-
-// DETALHAR 
 app.get('/materiais/ver/:id', async (req, res) => {
-    const material = await Material.findByPk(req.params.id);
-    if (!material) {
-        return res.status(404).send('Material não encontrado');
-    }
+    const material = await Material.findByPk(req.params.id, { include: [{ model: Turma, as: 'Turmas' }] });
+    if (!material) return res.status(404).send('Material nao encontrado');
     res.render('materiais', { detalhe: true, material: material.toJSON() });
 });
-
-// CRIAR
 app.post('/materiais', async (req, res) => {
     await Material.create({ nome: req.body.nome, quantidade: parseInt(req.body.quantidade) });
     res.redirect('/materiais');
 });
-
-// EDITAR 
 app.post('/materiais/:id/editar', async (req, res) => {
     const material = await Material.findByPk(req.params.id);
-    if (!material) {
-        return res.status(404).send('Material não encontrado');
-    }
+    if (!material) return res.status(404).send('Material nao encontrado');
     material.nome = req.body.nome;
     material.quantidade = parseInt(req.body.quantidade);
     await material.save();
     res.redirect('/materiais');
 });
-
-// EXCLUIR
 app.post('/materiais/excluir/:id', async (req, res) => {
     try {
         await Retirada.destroy({ where: { materialId: req.params.id } });
-
         await Material.destroy({ where: { id: req.params.id } });
-
         res.redirect('/materiais');
     } catch (error) {
         console.error('Erro ao excluir:', error);
@@ -149,33 +140,25 @@ app.post('/materiais/excluir/:id', async (req, res) => {
     }
 });
 
-// PROFESSORES
 app.get('/professores', async (req, res) => {
     const professores = await Professor.findAll();
     res.render('professores', { lista: true, professores: professores.map(p => p.toJSON()) });
 });
-app.get('/professores/novo', (req, res) => {
-    res.render('professores', { form: true });
-});
+app.get('/professores/novo', (req, res) => res.render('professores', { form: true }));
 app.get('/professores/:id/editar', async (req, res) => {
     const professor = await Professor.findByPk(req.params.id);
-    if (!professor) {
-        return res.status(404).send('Professor não encontrado');
-    }
+    if (!professor) return res.status(404).send('Professor nao encontrado');
     res.render('professores', { form: true, professor: professor.toJSON() });
 });
 app.get('/professores/ver/:id', async (req, res) => {
     const professor = await Professor.findByPk(req.params.id);
-    if (!professor) {
-        return res.status(404).send('Professor não encontrado');
-    }
+    if (!professor) return res.status(404).send('Professor nao encontrado');
     res.render('professores', { detalhe: true, professor: professor.toJSON() });
 });
 app.post('/professores', async (req, res) => {
     await Professor.create(req.body);
     res.redirect('/professores');
 });
-
 app.post('/professores/:id/editar', async (req, res) => {
     const professor = await Professor.findByPk(req.params.id);
     professor.nome = req.body.nome;
@@ -184,7 +167,6 @@ app.post('/professores/:id/editar', async (req, res) => {
     await professor.save();
     res.redirect('/professores');
 });
-
 app.post('/professores/excluir/:id', async (req, res) => {
     try {
         await Retirada.destroy({ where: { professorId: req.params.id } });
@@ -196,44 +178,30 @@ app.post('/professores/excluir/:id', async (req, res) => {
     }
 });
 
-
-// TURMAS
 app.get('/turmas', async (req, res) => {
     const turmas = await Turma.findAll();
     res.render('turmas', { lista: true, turmas: turmas.map(t => t.toJSON()) });
 });
-
-app.get('/turmas/nova', (req, res) => {
-    res.render('turmas', { form: true });
-});
-
+app.get('/turmas/nova', (req, res) => res.render('turmas', { form: true }));
 app.get('/turmas/:id/editar', async (req, res) => {
     const turma = await Turma.findByPk(req.params.id);
-    if (!turma) {
-        return res.status(404).send('Turma não encontrada');
-    }
+    if (!turma) return res.status(404).send('Turma nao encontrada');
     res.render('turmas', { form: true, turma: turma.toJSON() });
 });
-
 app.get('/turmas/ver/:id', async (req, res) => {
     const turma = await Turma.findByPk(req.params.id, {
-        include: [{ model: Aluno, as: 'Alunos' }]
+        include: [{ model: Aluno, as: 'Alunos' }, { model: Material, as: 'Materiais' }]
     });
-    if (!turma) {
-        return res.status(404).send('Turma não encontrada');
-    }
+    if (!turma) return res.status(404).send('Turma nao encontrada');
     res.render('turmas', { detalhe: true, turma: turma.toJSON() });
 });
-
 app.post('/turmas', async (req, res) => {
     await Turma.create({ nome: req.body.nome, turno: req.body.turno, capacidade: parseInt(req.body.capacidade) });
     res.redirect('/turmas');
 });
 app.post('/turmas/:id/editar', async (req, res) => {
     const turma = await Turma.findByPk(req.params.id);
-    if (!turma) {
-        return res.status(404).send('Turma não encontrada');
-    }
+    if (!turma) return res.status(404).send('Turma nao encontrada');
     turma.nome = req.body.nome;
     turma.turno = req.body.turno;
     turma.capacidade = parseInt(req.body.capacidade);
@@ -244,53 +212,53 @@ app.post('/turmas/excluir/:id', async (req, res) => {
     await Turma.destroy({ where: { id: req.params.id } });
     res.redirect('/turmas');
 });
+app.get('/turmas/:id/materiais', async (req, res) => {
+    const turma = await Turma.findByPk(req.params.id, { include: [{ model: Material, as: 'Materiais' }] });
+    const todosMateriais = await Material.findAll();
+    if (!turma) return res.status(404).send('Turma nao encontrada');
+    res.render('turma-materiais', { turma: turma.toJSON(), materiais: todosMateriais.map(m => m.toJSON()) });
+});
+app.post('/turmas/:id/materiais/adicionar', async (req, res) => {
+    const turma = await Turma.findByPk(req.params.id);
+    if (turma && req.body.materialId) await turma.addMaterial(req.body.materialId);
+    res.redirect(`/turmas/${req.params.id}/materiais`);
+});
+app.post('/turmas/:turmaId/materiais/remover/:materialId', async (req, res) => {
+    const turma = await Turma.findByPk(req.params.turmaId);
+    if (turma) await turma.removeMaterial(req.params.materialId);
+    res.redirect(`/turmas/${req.params.turmaId}/materiais`);
+});
 
-// LISTAR
 app.get('/alunos', async (req, res) => {
     const alunos = await Aluno.findAll({ include: [{ model: Turma, as: 'Turma' }] });
     res.render('alunos', { lista: true, alunos: alunos.map(a => a.toJSON()) });
 });
-
-// FORM NOVO
 app.get('/alunos/novo', async (req, res) => {
     const turmas = await Turma.findAll();
     res.render('alunos', { form: true, turmas: turmas.map(t => t.toJSON()) });
 });
-
-// FORM EDITAR
 app.get('/alunos/:id/editar', async (req, res) => {
     const aluno = await Aluno.findByPk(req.params.id);
     const turmas = await Turma.findAll();
-    if (!aluno) {
-        return res.status(404).send('Aluno não encontrado');
-    }
+    if (!aluno) return res.status(404).send('Aluno nao encontrado');
     res.render('alunos', { form: true, aluno: aluno.toJSON(), turmas: turmas.map(t => t.toJSON()) });
 });
-
-// DETALHAR
 app.get('/alunos/ver/:id', async (req, res) => {
-    const aluno = await Aluno.findByPk(req.params.id, { include: [{ model: Turma, as: 'Turma' }] });
-    if (!aluno) {
-        return res.status(404).send('Aluno não encontrado');
-    }
+    const aluno = await Aluno.findByPk(req.params.id, { include: [{ model: Turma, as: 'Turma' }, { model: Responsavel, as: 'Responsavel' }] });
+    if (!aluno) return res.status(404).send('Aluno nao encontrado');
     res.render('alunos', { detalhe: true, aluno: aluno.toJSON() });
 });
-
-// CRIAR 
 app.post('/alunos', async (req, res) => {
     await Aluno.create(req.body);
     res.redirect('/alunos');
 });
-
-// EDITAR 
 app.post('/alunos/:id/editar', async (req, res) => {
     await Aluno.update(req.body, { where: { id: req.params.id } });
     res.redirect('/alunos');
 });
-
-// EXCLUIR
 app.post('/alunos/excluir/:id', async (req, res) => {
     try {
+        await Responsavel.destroy({ where: { alunoId: req.params.id } });
         await Retirada.destroy({ where: { alunoId: req.params.id } });
         await Aluno.destroy({ where: { id: req.params.id } });
         res.redirect('/alunos');
@@ -300,55 +268,80 @@ app.post('/alunos/excluir/:id', async (req, res) => {
     }
 });
 
-// SERVIDORES
+app.get('/responsaveis', async (req, res) => {
+    const responsaveis = await Responsavel.findAll({ include: [{ model: Aluno, as: 'Aluno' }] });
+    res.render('responsaveis', { lista: true, responsaveis: responsaveis.map(r => r.toJSON()) });
+});
+app.get('/responsaveis/novo', async (req, res) => {
+    const alunos = await Aluno.findAll();
+    res.render('responsaveis', { form: true, alunos: alunos.map(a => a.toJSON()) });
+});
+app.get('/responsaveis/:id/editar', async (req, res) => {
+    const responsavel = await Responsavel.findByPk(req.params.id);
+    const alunos = await Aluno.findAll();
+    if (!responsavel) return res.status(404).send('Responsavel nao encontrado');
+    res.render('responsaveis', { form: true, responsavel: responsavel.toJSON(), alunos: alunos.map(a => a.toJSON()) });
+});
+app.get('/responsaveis/ver/:id', async (req, res) => {
+    const responsavel = await Responsavel.findByPk(req.params.id, { include: [{ model: Aluno, as: 'Aluno' }] });
+    if (!responsavel) return res.status(404).send('Responsavel nao encontrado');
+    res.render('responsaveis', { detalhe: true, responsavel: responsavel.toJSON() });
+});
+app.post('/responsaveis', async (req, res) => {
+    try {
+        await Responsavel.create(req.body);
+        res.redirect('/responsaveis');
+    } catch (error) {
+        console.error('Erro ao criar responsavel:', error);
+        res.status(500).send('Erro ao criar responsavel: ' + error.message);
+    }
+});
+app.post('/responsaveis/:id/editar', async (req, res) => {
+    try {
+        await Responsavel.update(req.body, { where: { id: req.params.id } });
+        res.redirect('/responsaveis');
+    } catch (error) {
+        console.error('Erro ao editar responsavel:', error);
+        res.status(500).send('Erro ao editar responsavel: ' + error.message);
+    }
+});
+app.post('/responsaveis/excluir/:id', async (req, res) => {
+    await Responsavel.destroy({ where: { id: req.params.id } });
+    res.redirect('/responsaveis');
+});
+
 app.get('/servidores', async (req, res) => {
     const servidores = await Servidor.findAll();
     res.render('servidores', { lista: true, servidores: servidores.map(s => s.toJSON()) });
 });
-
-app.get('/servidores/novo', (req, res) => {
-    res.render('servidores', { form: true });
-});
-
+app.get('/servidores/novo', (req, res) => res.render('servidores', { form: true }));
 app.get('/servidores/:id/editar', async (req, res) => {
     const servidor = await Servidor.findByPk(req.params.id);
-    if (!servidor) {
-        return res.status(404).send('Servidor não encontrado');
-    }
+    if (!servidor) return res.status(404).send('Servidor nao encontrado');
     res.render('servidores', { form: true, servidor: servidor.toJSON() });
 });
-
 app.get('/servidores/ver/:id', async (req, res) => {
     const servidor = await Servidor.findByPk(req.params.id);
-    if (!servidor) {
-        return res.status(404).send('Servidor não encontrado');
-    }
+    if (!servidor) return res.status(404).send('Servidor nao encontrado');
     res.render('servidores', { detalhe: true, servidor: servidor.toJSON() });
 });
-
 app.post('/servidores', async (req, res) => {
     await Servidor.create(req.body);
     res.redirect('/servidores');
 });
-
 app.post('/servidores/:id/editar', async (req, res) => {
     await Servidor.update(req.body, { where: { id: req.params.id } });
     res.redirect('/servidores');
 });
-
 app.post('/servidores/excluir/:id', async (req, res) => {
     await Servidor.destroy({ where: { id: req.params.id } });
     res.redirect('/servidores');
 });
 
-// RETIRADAS
-
-// LISTAR RETIRADAS
 app.get('/retiradas', async (req, res) => {
     try {
         const { busca, tipo } = req.query;
         const { Op } = require('sequelize');
-
         let where = {};
         let include = [
             { model: Aluno, as: 'Aluno', required: false },
@@ -356,7 +349,6 @@ app.get('/retiradas', async (req, res) => {
             { model: Material, as: 'Material', required: true },
             { model: Servidor, as: 'Servidor', required: true }
         ];
-
         if (tipo === 'aluno') {
             where.alunoId = { [Op.not]: null };
             if (busca && busca.trim() !== '') {
@@ -370,15 +362,8 @@ app.get('/retiradas', async (req, res) => {
                 include[1].required = true;
             }
         }
-
-        const retiradas = await Retirada.findAll({
-            where,
-            include,
-            order: [['dataRetirada', 'DESC'], ['horaRetirada', 'DESC']]
-        });
-
+        const retiradas = await Retirada.findAll({ where, include, order: [['dataRetirada', 'DESC'], ['horaRetirada', 'DESC']] });
         let resultadosFiltrados = retiradas;
-
         if (busca && busca.trim() !== '' && !tipo) {
             const buscaLower = busca.toLowerCase();
             resultadosFiltrados = retiradas.filter(r => {
@@ -387,92 +372,43 @@ app.get('/retiradas', async (req, res) => {
                 return nomeAluno.includes(buscaLower) || nomeProfessor.includes(buscaLower);
             });
         }
-
-        res.render('retiradas', {
-            lista: true,
-            retiradas: resultadosFiltrados.map(r => r.toJSON()),
-            busca: busca || '',
-            tipo: tipo || ''
-        });
+        res.render('retiradas', { lista: true, retiradas: resultadosFiltrados.map(r => r.toJSON()), busca: busca || '', tipo: tipo || '' });
     } catch (error) {
         console.error('Erro ao listar retiradas:', error);
         res.status(500).send('Erro ao listar retiradas: ' + error.message);
     }
 });
-
-
-//Nova retirada
 app.get('/retiradas/nova', async (req, res) => {
     const alunos = await Aluno.findAll();
     const professores = await Professor.findAll();
     const materiais = await Material.findAll();
     const servidores = await Servidor.findAll(); 
-    res.render('retiradas', { 
-        form: true, 
-        alunos: alunos.map(a => a.toJSON()), 
-        professores: professores.map(p => p.toJSON()),
-        materiais: materiais.map(m => m.toJSON()),
-        servidores: servidores.map(s => s.toJSON()) 
-    });
+    res.render('retiradas', { form: true, alunos: alunos.map(a => a.toJSON()), professores: professores.map(p => p.toJSON()), materiais: materiais.map(m => m.toJSON()), servidores: servidores.map(s => s.toJSON()) });
 });
-
-//Editar retirada
 app.get('/retiradas/:id/editar', async (req, res) => {
     const retirada = await Retirada.findByPk(req.params.id);
     const alunos = await Aluno.findAll();
     const professores = await Professor.findAll();
     const materiais = await Material.findAll();
     const servidores = await Servidor.findAll();
-
-    if (!retirada) {
-        return res.status(404).send('Retirada não encontrada');
-    }
-
-    res.render('retiradas', { 
-        form: true, 
-        retirada: retirada.toJSON(), 
-        alunos: alunos.map(a => a.toJSON()),
-        professores: professores.map(p => p.toJSON()),
-        materiais: materiais.map(m => m.toJSON()),
-        servidores: servidores.map(s => s.toJSON())
-    });
+    if (!retirada) return res.status(404).send('Retirada nao encontrada');
+    res.render('retiradas', { form: true, retirada: retirada.toJSON(), alunos: alunos.map(a => a.toJSON()), professores: professores.map(p => p.toJSON()), materiais: materiais.map(m => m.toJSON()), servidores: servidores.map(s => s.toJSON()) });
 });
-
-//Detalhar retirada
 app.get('/retiradas/ver/:id', async (req, res) => {
     const retirada = await Retirada.findByPk(req.params.id, {
-        include: [
-            { model: Aluno, as: 'Aluno' },
-            { model: Professor, as: 'Professor' },
-            { model: Material, as: 'Material' },
-            { model: Servidor, as: 'Servidor' }  
-        ]
+        include: [{ model: Aluno, as: 'Aluno' }, { model: Professor, as: 'Professor' }, { model: Material, as: 'Material' }, { model: Servidor, as: 'Servidor' }]
     });
-
-    if (!retirada) {
-        return res.status(404).send('Retirada não encontrada');
-    }
-
+    if (!retirada) return res.status(404).send('Retirada nao encontrada');
     res.render('retiradas', { detalhe: true, retirada: retirada.toJSON() });
 });
-
-
-//Criar retiradas
 app.post('/retiradas', async (req, res) => {
     try {
         const { materialId, quantidade, tipoRetirada } = req.body;
-
         const material = await Material.findByPk(materialId);
-
-        if (!material) {
-            return res.status(404).send('Material não encontrado');
-        }
-
+        if (!material) return res.status(404).send('Material nao encontrado');
         if (material.quantidade < parseInt(quantidade)) {
-            return res.status(400).send(`Estoque insuficiente! Disponível: ${material.quantidade}, Solicitado: ${quantidade}`);
+            return res.status(400).send(`Estoque insuficiente! Disponivel: ${material.quantidade}, Solicitado: ${quantidade}`);
         }
-
-        // Limpar os IDs sem uso
         const dadosRetirada = { ...req.body };
         if (tipoRetirada === 'aluno') {
             delete dadosRetirada.professorId;
@@ -480,50 +416,35 @@ app.post('/retiradas', async (req, res) => {
             delete dadosRetirada.alunoId;
         }
         delete dadosRetirada.tipoRetirada;
-
         await Retirada.create(dadosRetirada);
-
         material.quantidade -= parseInt(quantidade);
         await material.save();
-
         res.redirect('/retiradas');
     } catch (error) {
         console.error('Erro ao criar retirada:', error);
         res.status(500).send('Erro ao criar retirada: ' + error.message);
     }
 });
-
 app.post('/retiradas/:id/editar', async (req, res) => {
     try {
         const retirada = await Retirada.findByPk(req.params.id);
-
-        if (!retirada) {
-            return res.status(404).send('Retirada não encontrada');
-        }
-
+        if (!retirada) return res.status(404).send('Retirada nao encontrada');
         const { materialId, quantidade, tipoRetirada } = req.body;
         const quantidadeAnterior = retirada.quantidade;
         const materialAnteriorId = retirada.materialId;
-
         if (materialAnteriorId != materialId || quantidadeAnterior != quantidade) {
-
             const materialAnterior = await Material.findByPk(materialAnteriorId);
             materialAnterior.quantidade += quantidadeAnterior;
             await materialAnterior.save();
-
             const materialNovo = await Material.findByPk(materialId);
-
             if (materialNovo.quantidade < parseInt(quantidade)) {
                 materialAnterior.quantidade -= quantidadeAnterior;
                 await materialAnterior.save();
-                return res.status(400).send(`Estoque insuficiente! Disponível: ${materialNovo.quantidade}, Solicitado: ${quantidade}`);
+                return res.status(400).send(`Estoque insuficiente! Disponivel: ${materialNovo.quantidade}, Solicitado: ${quantidade}`);
             }
-
             materialNovo.quantidade -= parseInt(quantidade);
             await materialNovo.save();
         }
-
-        // Limpar os IDs sem uso
         const dadosAtualizacao = { ...req.body };
         if (tipoRetirada === 'aluno') {
             dadosAtualizacao.professorId = null;
@@ -531,31 +452,21 @@ app.post('/retiradas/:id/editar', async (req, res) => {
             dadosAtualizacao.alunoId = null;
         }
         delete dadosAtualizacao.tipoRetirada;
-
         await Retirada.update(dadosAtualizacao, { where: { id: req.params.id } });
         res.redirect('/retiradas');
-
     } catch (error) {
         console.error('Erro ao editar retirada:', error);
         res.status(500).send('Erro ao editar retirada: ' + error.message);
     }
 });
-
-// Excluir retirada
 app.post('/retiradas/excluir/:id', async (req, res) => {
     try {
         const retirada = await Retirada.findByPk(req.params.id);
-
-        if (!retirada) {
-            return res.status(404).send('Retirada não encontrada');
-        }
-
+        if (!retirada) return res.status(404).send('Retirada nao encontrada');
         const material = await Material.findByPk(retirada.materialId);
         material.quantidade += retirada.quantidade;
         await material.save();
-
         await Retirada.destroy({ where: { id: req.params.id } });
-
         res.redirect('/retiradas');
     } catch (error) {
         console.error('Erro ao excluir retirada:', error);
